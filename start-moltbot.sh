@@ -291,8 +291,39 @@ if (isOpenAI) {
     config.agents.defaults.models['anthropic/claude-haiku-4-5-20251001'] = { alias: 'Haiku 4.5' };
     config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5-20251101';
 } else {
-    // Default to Anthropic without custom base URL (uses built-in pi-ai catalog)
-    config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5';
+    // Check if auth-profiles.json has openai-codex profile
+    // If so, configure OpenAI Codex as the default model (subscription-based auth)
+    const authProfilesPath = '/root/.clawdbot/agents/main/agent/auth-profiles.json';
+    let hasCodexAuth = false;
+    try {
+        const authProfiles = JSON.parse(fs.readFileSync(authProfilesPath, 'utf8'));
+        hasCodexAuth = Object.keys(authProfiles.profiles || {}).some(key => key.startsWith('openai-codex:'));
+        if (hasCodexAuth) {
+            console.log('Found openai-codex auth profile, configuring Codex models');
+        }
+    } catch (e) {
+        // No auth-profiles.json or invalid format - that's fine
+    }
+
+    if (hasCodexAuth) {
+        // Configure OpenAI Codex models (uses OAuth from auth-profiles.json)
+        config.models = config.models || {};
+        config.models.providers = config.models.providers || {};
+        config.models.providers['openai-codex'] = {
+            api: 'openai-responses',
+            models: [
+                { id: 'gpt-5-codex', name: 'GPT-5 Codex', contextWindow: 200000 },
+                { id: 'gpt-5.1-codex', name: 'GPT-5.1 Codex', contextWindow: 200000 },
+            ]
+        };
+        config.agents.defaults.models = config.agents.defaults.models || {};
+        config.agents.defaults.models['openai-codex/gpt-5-codex'] = { alias: 'GPT-5 Codex' };
+        config.agents.defaults.models['openai-codex/gpt-5.1-codex'] = { alias: 'GPT-5.1 Codex' };
+        config.agents.defaults.model.primary = 'openai-codex/gpt-5-codex';
+    } else {
+        // Default to Anthropic without custom base URL (uses built-in pi-ai catalog)
+        config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5';
+    }
 }
 
 // Write updated config
