@@ -316,10 +316,12 @@ if (isOpenAI) {
         // Use built-in openai-codex provider (OAuth from auth-profiles.json)
         // No need to configure provider - OpenClaw handles it automatically
         // Just set the model selection
+        // Available Codex models: gpt-5.2-codex, gpt-5.2, gpt-5.1-codex-max, gpt-5.1-codex-mini
         config.agents.defaults.models = config.agents.defaults.models || {};
-        config.agents.defaults.models['openai-codex/gpt-5-codex'] = { alias: 'GPT-5 Codex' };
-        config.agents.defaults.models['openai-codex/gpt-5.1-codex'] = { alias: 'GPT-5.1 Codex' };
-        config.agents.defaults.model.primary = 'openai-codex/gpt-5-codex';
+        config.agents.defaults.models['openai-codex/gpt-5.2-codex'] = { alias: 'GPT-5.2 Codex' };
+        config.agents.defaults.models['openai-codex/gpt-5.2'] = { alias: 'GPT-5.2' };
+        config.agents.defaults.models['openai-codex/gpt-5.1-codex-max'] = { alias: 'GPT-5.1 Codex Max' };
+        config.agents.defaults.model.primary = 'openai-codex/gpt-5.2-codex';
     } else {
         // Default to Anthropic without custom base URL (uses built-in pi-ai catalog)
         config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5';
