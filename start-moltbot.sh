@@ -306,16 +306,9 @@ if (isOpenAI) {
     }
 
     if (hasCodexAuth) {
-        // Configure OpenAI Codex models (uses OAuth from auth-profiles.json)
-        config.models = config.models || {};
-        config.models.providers = config.models.providers || {};
-        config.models.providers['openai-codex'] = {
-            api: 'openai-responses',
-            models: [
-                { id: 'gpt-5-codex', name: 'GPT-5 Codex', contextWindow: 200000 },
-                { id: 'gpt-5.1-codex', name: 'GPT-5.1 Codex', contextWindow: 200000 },
-            ]
-        };
+        // Use built-in openai-codex provider (OAuth from auth-profiles.json)
+        // No need to configure provider - OpenClaw handles it automatically
+        // Just set the model selection
         config.agents.defaults.models = config.agents.defaults.models || {};
         config.agents.defaults.models['openai-codex/gpt-5-codex'] = { alias: 'GPT-5 Codex' };
         config.agents.defaults.models['openai-codex/gpt-5.1-codex'] = { alias: 'GPT-5.1 Codex' };
