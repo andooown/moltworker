@@ -105,6 +105,22 @@ if [ -d "$BACKUP_DIR/skills" ] && [ "$(ls -A $BACKUP_DIR/skills 2>/dev/null)" ];
     fi
 fi
 
+# ============================================================
+# RESTORE AUTH PROFILES (for Codex CLI subscription auth)
+# ============================================================
+# Auth profiles enable OAuth-based authentication (e.g., OpenAI Codex subscription)
+# Upload auth-profiles.json to R2: wrangler r2 object put moltbot-data/auth/auth-profiles.json --file ~/.clawdbot/agents/main/agent/auth-profiles.json
+AUTH_PROFILES_DIR="/root/.clawdbot/agents/main/agent"
+AUTH_PROFILES_FILE="$AUTH_PROFILES_DIR/auth-profiles.json"
+R2_AUTH_PROFILES="$BACKUP_DIR/auth/auth-profiles.json"
+
+if [ -f "$R2_AUTH_PROFILES" ]; then
+    echo "Restoring auth profiles from R2..."
+    mkdir -p "$AUTH_PROFILES_DIR"
+    cp -f "$R2_AUTH_PROFILES" "$AUTH_PROFILES_FILE"
+    echo "Restored auth-profiles.json for Codex CLI authentication"
+fi
+
 # If config file still doesn't exist, create from template
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "No existing config found, initializing from template..."

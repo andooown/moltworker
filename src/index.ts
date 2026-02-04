@@ -9,11 +9,14 @@
  * - WebSocket support for real-time communication
  * - Admin UI at /_admin/ for device management
  * - Configuration via environment secrets
+ * - Codex CLI subscription authentication (OAuth)
+ *
+ * Authentication options:
+ * - ANTHROPIC_API_KEY: Your Anthropic API key (traditional API key auth)
+ * - Codex CLI OAuth: Upload auth-profiles.json to R2 for subscription-based auth
+ *   wrangler r2 object put moltbot-data/auth/auth-profiles.json --file ~/.clawdbot/agents/main/agent/auth-profiles.json
  *
  * Optional secrets (set via `wrangler secret put`):
- * - ANTHROPIC_API_KEY: Your Anthropic API key (optional if using Codex CLI authentication)
- *
- * Optional secrets:
  * - MOLTBOT_GATEWAY_TOKEN: Token to protect gateway access
  * - TELEGRAM_BOT_TOKEN: Telegram bot token
  * - DISCORD_BOT_TOKEN: Discord bot token
