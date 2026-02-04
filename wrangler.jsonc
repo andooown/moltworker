@@ -2,6 +2,8 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "moltbot-sandbox",
   "main": "src/index.ts",
+  // Disable workers.dev subdomain (use custom domain only)
+  "workers_dev": false,
   "compatibility_date": "2025-05-06",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
