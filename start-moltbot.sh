@@ -179,6 +179,13 @@ if (config.models?.providers?.anthropic?.models) {
     }
 }
 
+// Clean up openai-codex provider config - it's a built-in provider that doesn't need
+// explicit configuration. Having it in config causes "baseUrl required" validation error.
+if (config.models?.providers?.['openai-codex']) {
+    console.log('Removing openai-codex provider config (built-in provider, no config needed)');
+    delete config.models.providers['openai-codex'];
+}
+
 
 
 // Gateway configuration
