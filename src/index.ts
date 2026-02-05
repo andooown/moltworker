@@ -9,11 +9,14 @@
  * - WebSocket support for real-time communication
  * - Admin UI at /_admin/ for device management
  * - Configuration via environment secrets
+ * - Codex CLI subscription authentication (OAuth)
  *
- * Required secrets (set via `wrangler secret put`):
- * - ANTHROPIC_API_KEY: Your Anthropic API key
+ * Authentication options:
+ * - ANTHROPIC_API_KEY: Your Anthropic API key (traditional API key auth)
+ * - Codex CLI OAuth: Upload auth-profiles.json to R2 for subscription-based auth
+ *   wrangler r2 object put moltbot-data/auth/auth-profiles.json --file ~/.clawdbot/agents/main/agent/auth-profiles.json
  *
- * Optional secrets:
+ * Optional secrets (set via `wrangler secret put`):
  * - MOLTBOT_GATEWAY_TOKEN: Token to protect gateway access
  * - TELEGRAM_BOT_TOKEN: Telegram bot token
  * - DISCORD_BOT_TOKEN: Discord bot token
@@ -74,15 +77,9 @@ function validateRequiredEnv(env: MoltbotEnv): string[] {
     }
   }
 
-  // Check for AI Gateway or direct Anthropic configuration
-  if (env.AI_GATEWAY_API_KEY) {
-    // AI Gateway requires both API key and base URL
-    if (!env.AI_GATEWAY_BASE_URL) {
-      missing.push('AI_GATEWAY_BASE_URL (required when using AI_GATEWAY_API_KEY)');
-    }
-  } else if (!env.ANTHROPIC_API_KEY) {
-    // Direct Anthropic access requires API key
-    missing.push('ANTHROPIC_API_KEY or AI_GATEWAY_API_KEY');
+  // Check for AI Gateway configuration (API key itself is optional - Codex CLI can provide its own)
+  if (env.AI_GATEWAY_API_KEY && !env.AI_GATEWAY_BASE_URL) {
+    missing.push('AI_GATEWAY_BASE_URL (required when using AI_GATEWAY_API_KEY)');
   }
 
   return missing;
