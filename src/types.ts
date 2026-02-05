@@ -41,6 +41,8 @@ export interface MoltbotEnv {
   WORKER_URL?: string; // Public URL of the worker (for CDP endpoint)
   // Brave Search API
   BRAVE_API_KEY?: string; // Brave Search API key for web search
+  // GitHub API
+  GH_TOKEN?: string; // GitHub personal access token for GitHub skills
 }
 
 /**

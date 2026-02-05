@@ -19,6 +19,7 @@
  * - DISCORD_BOT_TOKEN: Discord bot token
  * - SLACK_BOT_TOKEN + SLACK_APP_TOKEN: Slack tokens
  * - BRAVE_API_KEY: Brave Search API key for web search
+ * - GH_TOKEN: GitHub personal access token for GitHub skills
  */
 
 import { Hono } from 'hono';
