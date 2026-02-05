@@ -18,6 +18,7 @@
  * - TELEGRAM_BOT_TOKEN: Telegram bot token
  * - DISCORD_BOT_TOKEN: Discord bot token
  * - SLACK_BOT_TOKEN + SLACK_APP_TOKEN: Slack tokens
+ * - BRAVE_API_KEY: Brave Search API key for web search
  */
 
 import { Hono } from 'hono';
