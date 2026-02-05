@@ -233,6 +233,14 @@ if (process.env.BRAVE_API_KEY) {
     };
 }
 
+// GitHub skills configuration
+if (process.env.GH_TOKEN) {
+    console.log('Configuring GitHub skills');
+    config.tools = config.tools || {};
+    config.tools.github = config.tools.github || {};
+    config.tools.github.enabled = true;
+}
+
 // Base URL override (e.g., for Cloudflare AI Gateway)
 // Usage: Set AI_GATEWAY_BASE_URL or ANTHROPIC_BASE_URL to your endpoint like:
 //   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/anthropic
