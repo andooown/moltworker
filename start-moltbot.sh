@@ -105,6 +105,22 @@ if [ -d "$BACKUP_DIR/skills" ] && [ "$(ls -A $BACKUP_DIR/skills 2>/dev/null)" ];
     fi
 fi
 
+# ============================================================
+# RESTORE AUTH PROFILES (for Codex CLI subscription auth)
+# ============================================================
+# Auth profiles enable OAuth-based authentication (e.g., OpenAI Codex subscription)
+# Upload auth-profiles.json to R2: wrangler r2 object put moltbot-data/auth/auth-profiles.json --file ~/.clawdbot/agents/main/agent/auth-profiles.json
+AUTH_PROFILES_DIR="/root/.clawdbot/agents/main/agent"
+AUTH_PROFILES_FILE="$AUTH_PROFILES_DIR/auth-profiles.json"
+R2_AUTH_PROFILES="$BACKUP_DIR/auth/auth-profiles.json"
+
+if [ -f "$R2_AUTH_PROFILES" ]; then
+    echo "Restoring auth profiles from R2..."
+    mkdir -p "$AUTH_PROFILES_DIR"
+    cp -f "$R2_AUTH_PROFILES" "$AUTH_PROFILES_FILE"
+    echo "Restored auth-profiles.json for Codex CLI authentication"
+fi
+
 # If config file still doesn't exist, create from template
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "No existing config found, initializing from template..."
@@ -161,6 +177,13 @@ if (config.models?.providers?.anthropic?.models) {
         console.log('Removing broken anthropic provider config (missing model names)');
         delete config.models.providers.anthropic;
     }
+}
+
+// Clean up openai-codex provider config - it's a built-in provider that doesn't need
+// explicit configuration. Having it in config causes "baseUrl required" validation error.
+if (config.models?.providers?.['openai-codex']) {
+    console.log('Removing openai-codex provider config (built-in provider, no config needed)');
+    delete config.models.providers['openai-codex'];
 }
 
 
@@ -294,8 +317,34 @@ if (isOpenAI) {
     config.agents.defaults.models['anthropic/claude-haiku-4-5-20251001'] = { alias: 'Haiku 4.5' };
     config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5-20251101';
 } else {
-    // Default to Anthropic without custom base URL (uses built-in pi-ai catalog)
-    config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5';
+    // Check if auth-profiles.json has openai-codex profile
+    // If so, configure OpenAI Codex as the default model (subscription-based auth)
+    const authProfilesPath = '/root/.clawdbot/agents/main/agent/auth-profiles.json';
+    let hasCodexAuth = false;
+    try {
+        const authProfiles = JSON.parse(fs.readFileSync(authProfilesPath, 'utf8'));
+        hasCodexAuth = Object.keys(authProfiles.profiles || {}).some(key => key.startsWith('openai-codex:'));
+        if (hasCodexAuth) {
+            console.log('Found openai-codex auth profile, configuring Codex models');
+        }
+    } catch (e) {
+        // No auth-profiles.json or invalid format - that's fine
+    }
+
+    if (hasCodexAuth) {
+        // Use built-in openai-codex provider (OAuth from auth-profiles.json)
+        // No need to configure provider - OpenClaw handles it automatically
+        // Just set the model selection
+        // Available Codex models: gpt-5.2-codex, gpt-5.2, gpt-5.1-codex-max, gpt-5.1-codex-mini
+        config.agents.defaults.models = config.agents.defaults.models || {};
+        config.agents.defaults.models['openai-codex/gpt-5.2-codex'] = { alias: 'GPT-5.2 Codex' };
+        config.agents.defaults.models['openai-codex/gpt-5.2'] = { alias: 'GPT-5.2' };
+        config.agents.defaults.models['openai-codex/gpt-5.1-codex-max'] = { alias: 'GPT-5.1 Codex Max' };
+        config.agents.defaults.model.primary = 'openai-codex/gpt-5.2-codex';
+    } else {
+        // Default to Anthropic without custom base URL (uses built-in pi-ai catalog)
+        config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5';
+    }
 }
 
 // Write updated config
