@@ -273,17 +273,17 @@ if (isOpenAI) {
         baseUrl: baseUrl,
         api: 'openai-responses',
         models: [
-            { id: 'gpt-5.2', name: 'GPT-5.2', contextWindow: 200000 },
+            { id: 'gpt-5.3', name: 'GPT-5.3', contextWindow: 200000 },
             { id: 'gpt-5', name: 'GPT-5', contextWindow: 200000 },
             { id: 'gpt-4.5-preview', name: 'GPT-4.5 Preview', contextWindow: 128000 },
         ]
     };
     // Add models to the allowlist so they appear in /models
     config.agents.defaults.models = config.agents.defaults.models || {};
-    config.agents.defaults.models['openai/gpt-5.2'] = { alias: 'GPT-5.2' };
+    config.agents.defaults.models['openai/gpt-5.3'] = { alias: 'GPT-5.3' };
     config.agents.defaults.models['openai/gpt-5'] = { alias: 'GPT-5' };
     config.agents.defaults.models['openai/gpt-4.5-preview'] = { alias: 'GPT-4.5' };
-    config.agents.defaults.model.primary = 'openai/gpt-5.2';
+    config.agents.defaults.model.primary = 'openai/gpt-5.3';
 } else if (baseUrl) {
     console.log('Configuring Anthropic provider with base URL:', baseUrl);
     config.models = config.models || {};
@@ -327,12 +327,12 @@ if (isOpenAI) {
         // Use built-in openai-codex provider (OAuth from auth-profiles.json)
         // No need to configure provider - OpenClaw handles it automatically
         // Just set the model selection
-        // Available Codex models: gpt-5.2-codex, gpt-5.2, gpt-5.1-codex-max, gpt-5.1-codex-mini
+        // Available Codex models: gpt-5.3-codex, gpt-5.3, gpt-5.1-codex-max, gpt-5.1-codex-mini
         config.agents.defaults.models = config.agents.defaults.models || {};
-        config.agents.defaults.models['openai-codex/gpt-5.2-codex'] = { alias: 'GPT-5.2 Codex' };
-        config.agents.defaults.models['openai-codex/gpt-5.2'] = { alias: 'GPT-5.2' };
+        config.agents.defaults.models['openai-codex/gpt-5.3-codex'] = { alias: 'GPT-5.3 Codex' };
+        config.agents.defaults.models['openai-codex/gpt-5.3'] = { alias: 'GPT-5.3' };
         config.agents.defaults.models['openai-codex/gpt-5.1-codex-max'] = { alias: 'GPT-5.1 Codex Max' };
-        config.agents.defaults.model.primary = 'openai-codex/gpt-5.2-codex';
+        config.agents.defaults.model.primary = 'openai-codex/gpt-5.3-codex';
     } else {
         // Default to Anthropic without custom base URL (uses built-in pi-ai catalog)
         config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5';
