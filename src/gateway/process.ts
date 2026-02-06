@@ -3,7 +3,10 @@ import type { MoltbotEnv } from '../types';
 import { MOLTBOT_PORT, STARTUP_TIMEOUT_MS } from '../config';
 import { buildEnvVars } from './env';
 import { mountR2Storage } from './r2';
+import { waitForProcess } from './utils';
 import { markStartupInProgress, markStartupSuccess, markStartupFailed } from './state';
+
+const STARTUP_LOG_PATH = '/tmp/moltbot-startup.log';
 
 /**
  * Find an existing Moltbot gateway process
@@ -83,7 +86,8 @@ export async function ensureMoltbotGateway(sandbox: Sandbox, env: MoltbotEnv): P
   // Start a new Moltbot gateway
   console.log('Starting new Moltbot gateway...');
   const envVars = buildEnvVars(env);
-  const command = '/usr/local/bin/start-moltbot.sh';
+  // Redirect stdout/stderr to a log file so we can read it even after the process exits
+  const command = `/usr/local/bin/start-moltbot.sh > ${STARTUP_LOG_PATH} 2>&1`;
 
   console.log('Starting process with command:', command);
   console.log('Environment vars being passed:', Object.keys(envVars));
@@ -107,28 +111,40 @@ export async function ensureMoltbotGateway(sandbox: Sandbox, env: MoltbotEnv): P
     console.log('[Gateway] Moltbot gateway is ready!');
     markStartupSuccess();
 
-    const logs = await process.getLogs();
-    if (logs.stdout) console.log('[Gateway] stdout:', logs.stdout);
-    if (logs.stderr) console.log('[Gateway] stderr:', logs.stderr);
+    // Log startup output for debugging
+    const startupLogs = await readStartupLogs(sandbox);
+    if (startupLogs) console.log('[Gateway] startup logs:', startupLogs);
   } catch (e) {
     console.error('[Gateway] waitForPort failed:', e);
-    try {
-      const logs = await process.getLogs();
-      console.error('[Gateway] startup failed. Stderr:', logs.stderr);
-      console.error('[Gateway] startup failed. Stdout:', logs.stdout);
-      const errorMsg = `Moltbot gateway failed to start. Stderr: ${logs.stderr || '(empty)'}`;
-      markStartupFailed(errorMsg);
-      throw new Error(errorMsg);
-    } catch (logErr) {
-      console.error('[Gateway] Failed to get logs:', logErr);
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      markStartupFailed(errorMsg);
-      throw e;
-    }
+
+    // Read logs from the file - this works even after the process has exited
+    const startupLogs = await readStartupLogs(sandbox);
+    console.error('[Gateway] startup failed. Logs:', startupLogs || '(empty)');
+
+    const errorMsg = startupLogs
+      ? `Moltbot gateway failed to start:\n${startupLogs}`
+      : `Moltbot gateway failed to start: ${e instanceof Error ? e.message : String(e)}`;
+    markStartupFailed(errorMsg);
+    throw new Error(errorMsg);
   }
 
   // Verify gateway is actually responding
   console.log('[Gateway] Verifying gateway health...');
-  
+
   return process;
+}
+
+/**
+ * Read the startup log file from the sandbox.
+ * Returns the log content, or null if the file doesn't exist or can't be read.
+ */
+async function readStartupLogs(sandbox: Sandbox): Promise<string | null> {
+  try {
+    const proc = await sandbox.startProcess(`cat ${STARTUP_LOG_PATH} 2>/dev/null`);
+    await waitForProcess(proc, 5000);
+    const logs = await proc.getLogs();
+    return logs.stdout || null;
+  } catch {
+    return null;
+  }
 }
