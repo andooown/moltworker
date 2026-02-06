@@ -105,6 +105,19 @@ if [ -d "$BACKUP_DIR/skills" ] && [ "$(ls -A $BACKUP_DIR/skills 2>/dev/null)" ];
     fi
 fi
 
+# Restore workspace files from R2 backup (memory, agent.md, soul.md, etc.)
+# These files live in the agent workspace (/root/clawd) alongside skills
+WORKSPACE_DIR="/root/clawd"
+if [ -d "$BACKUP_DIR/workspace" ] && [ "$(ls -A $BACKUP_DIR/workspace 2>/dev/null)" ]; then
+    if should_restore_from_r2; then
+        echo "Restoring workspace files from $BACKUP_DIR/workspace..."
+        mkdir -p "$WORKSPACE_DIR"
+        # Use rsync to restore workspace, excluding skills/ (restored separately above)
+        rsync -a --exclude='skills/' "$BACKUP_DIR/workspace/" "$WORKSPACE_DIR/"
+        echo "Restored workspace files (memory, agent config) from R2 backup"
+    fi
+fi
+
 # ============================================================
 # RESTORE AUTH PROFILES (for Codex CLI subscription auth)
 # ============================================================
