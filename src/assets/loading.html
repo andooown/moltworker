@@ -107,6 +107,26 @@
       background: rgba(248, 113, 113, 0.1);
       border-radius: 8px;
       display: none;
+      text-align: left;
+      word-break: break-word;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    .retry-btn {
+      margin-top: 16px;
+      padding: 10px 24px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .retry-btn:hover {
+      background: #2563eb;
     }
     
     .ready {
@@ -126,7 +146,8 @@
     <p class="status" id="status">Starting container...</p>
     
     <p class="error" id="error"></p>
-    
+    <button class="retry-btn" id="retryBtn" onclick="retryStartup()">Retry</button>
+
     <p class="info">This usually takes 1-2 minutes on cold start</p>
   </div>
   
@@ -134,57 +155,77 @@
     const statusEl = document.getElementById('status');
     const titleEl = document.getElementById('title');
     const errorEl = document.getElementById('error');
+    const retryBtn = document.getElementById('retryBtn');
     let pollCount = 0;
     let consecutiveErrors = 0;
     const maxConsecutiveErrors = 5;
-    
+
+    function showError(message) {
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      retryBtn.style.display = 'inline-block';
+      document.querySelector('.spinner').style.display = 'none';
+    }
+
+    function retryStartup() {
+      // Reload the page to trigger a new startup attempt via the catch-all route
+      window.location.reload();
+    }
+
     async function checkStatus() {
       pollCount++;
-      
+
       try {
         const response = await fetch('/api/status');
         const data = await response.json();
         consecutiveErrors = 0;
-        
+
         if (data.ok && data.status === 'running') {
           // Container is ready! Reload the page
           titleEl.innerHTML = '<span class="ready">Moltworker is ready!</span>';
           statusEl.textContent = 'Redirecting...';
           document.querySelector('.spinner').style.display = 'none';
-          
+
           // Small delay so user sees the "ready" message
           setTimeout(() => {
             window.location.reload();
           }, 500);
           return;
         }
-        
+
         // Update status message based on state
-        if (data.status === 'not_running') {
+        if (data.status === 'startup_failed') {
+          titleEl.textContent = 'Gateway startup failed';
+          statusEl.textContent = 'Attempt ' + (data.failureCount || 1) + ' failed';
+          showError(data.error || 'Unknown error');
+          return; // Stop polling - user needs to retry
+        } else if (data.status === 'starting') {
+          statusEl.textContent = 'Gateway is starting...';
+        } else if (data.status === 'not_running') {
           statusEl.textContent = 'Container is starting up...';
         } else if (data.status === 'not_responding') {
           statusEl.textContent = 'Container started, waiting for gateway...';
         } else {
           statusEl.textContent = 'Checking status... (poll #' + pollCount + ')';
         }
-        
+
         // Continue polling
         setTimeout(checkStatus, 2000);
-        
+
       } catch (err) {
         consecutiveErrors++;
-        
+
         if (consecutiveErrors >= maxConsecutiveErrors) {
-          errorEl.textContent = 'Unable to reach server. Please refresh the page.';
-          errorEl.style.display = 'block';
           statusEl.textContent = 'Connection lost';
+          showError('Unable to reach server. Please refresh the page.');
+          return;
         } else {
           statusEl.textContent = 'Retrying... (' + consecutiveErrors + '/' + maxConsecutiveErrors + ')';
           setTimeout(checkStatus, 3000);
         }
       }
     }
-    
+
     // Start polling after a brief delay
     setTimeout(checkStatus, 1000);
   </script>
