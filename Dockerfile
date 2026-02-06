@@ -10,7 +10,10 @@ RUN ARCH="$(dpkg --print-architecture)" \
          arm64) NODE_ARCH="arm64" ;; \
          *) echo "Unsupported architecture: ${ARCH}" >&2; exit 1 ;; \
        esac \
-    && apt-get update && apt-get install -y xz-utils ca-certificates rsync \
+    && apt-get update && apt-get install -y xz-utils ca-certificates rsync gpg \
+    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=${ARCH} signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+    && apt-get update && apt-get install -y gh \
     && curl -fsSLk https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz -o /tmp/node.tar.xz \
     && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
     && rm /tmp/node.tar.xz \
