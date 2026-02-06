@@ -3,6 +3,7 @@ import type { MoltbotEnv } from '../types';
 import { MOLTBOT_PORT, STARTUP_TIMEOUT_MS } from '../config';
 import { buildEnvVars } from './env';
 import { mountR2Storage } from './r2';
+import { markStartupInProgress, markStartupSuccess, markStartupFailed } from './state';
 
 /**
  * Find an existing Moltbot gateway process
@@ -48,6 +49,8 @@ export async function findExistingMoltbotProcess(sandbox: Sandbox): Promise<Proc
  * @returns The running gateway process
  */
 export async function ensureMoltbotGateway(sandbox: Sandbox, env: MoltbotEnv): Promise<Process> {
+  markStartupInProgress();
+
   // Mount R2 storage for persistent data (non-blocking if not configured)
   // R2 is used as a backup - the startup script will restore from it on boot
   await mountR2Storage(sandbox, env);
@@ -64,6 +67,7 @@ export async function ensureMoltbotGateway(sandbox: Sandbox, env: MoltbotEnv): P
       console.log('Waiting for Moltbot gateway on port', MOLTBOT_PORT, 'timeout:', STARTUP_TIMEOUT_MS);
       await existingProcess.waitForPort(MOLTBOT_PORT, { mode: 'tcp', timeout: STARTUP_TIMEOUT_MS });
       console.log('Moltbot gateway is reachable');
+      markStartupSuccess();
       return existingProcess;
     } catch (e) {
       // Timeout waiting for port - process is likely dead or stuck, kill and restart
@@ -92,6 +96,7 @@ export async function ensureMoltbotGateway(sandbox: Sandbox, env: MoltbotEnv): P
     console.log('Process started with id:', process.id, 'status:', process.status);
   } catch (startErr) {
     console.error('Failed to start process:', startErr);
+    markStartupFailed(startErr instanceof Error ? startErr.message : String(startErr));
     throw startErr;
   }
 
@@ -100,6 +105,7 @@ export async function ensureMoltbotGateway(sandbox: Sandbox, env: MoltbotEnv): P
     console.log('[Gateway] Waiting for Moltbot gateway to be ready on port', MOLTBOT_PORT);
     await process.waitForPort(MOLTBOT_PORT, { mode: 'tcp', timeout: STARTUP_TIMEOUT_MS });
     console.log('[Gateway] Moltbot gateway is ready!');
+    markStartupSuccess();
 
     const logs = await process.getLogs();
     if (logs.stdout) console.log('[Gateway] stdout:', logs.stdout);
@@ -110,9 +116,13 @@ export async function ensureMoltbotGateway(sandbox: Sandbox, env: MoltbotEnv): P
       const logs = await process.getLogs();
       console.error('[Gateway] startup failed. Stderr:', logs.stderr);
       console.error('[Gateway] startup failed. Stdout:', logs.stdout);
-      throw new Error(`Moltbot gateway failed to start. Stderr: ${logs.stderr || '(empty)'}`);
+      const errorMsg = `Moltbot gateway failed to start. Stderr: ${logs.stderr || '(empty)'}`;
+      markStartupFailed(errorMsg);
+      throw new Error(errorMsg);
     } catch (logErr) {
       console.error('[Gateway] Failed to get logs:', logErr);
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      markStartupFailed(errorMsg);
       throw e;
     }
   }
