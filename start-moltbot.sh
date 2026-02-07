@@ -344,7 +344,6 @@ if (isOpenAI) {
         config.agents.defaults.models = config.agents.defaults.models || {};
         config.agents.defaults.models['openai-codex/gpt-5.2-codex'] = { alias: 'GPT-5.2 Codex' };
         config.agents.defaults.models['openai-codex/gpt-5.2'] = { alias: 'GPT-5.2' };
-        config.agents.defaults.models['openai-codex/gpt-5.1-codex-max'] = { alias: 'GPT-5.1 Codex Max' };
         config.agents.defaults.model.primary = 'openai-codex/gpt-5.2-codex';
     } else {
         // Default to Anthropic without custom base URL (uses built-in pi-ai catalog)
