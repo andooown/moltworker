@@ -43,6 +43,9 @@ export interface MoltbotEnv {
   BRAVE_API_KEY?: string; // Brave Search API key for web search
   // GitHub API
   GH_TOKEN?: string; // GitHub personal access token for GitHub skills
+  // Hyperliquid wallet
+  HL_WALLET?: string; // Hyperliquid wallet address
+  HL_PRIVATE_KEY?: string; // Hyperliquid wallet private key
 }
 
 /**
