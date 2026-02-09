@@ -273,7 +273,7 @@ if (isOpenAI) {
         baseUrl: baseUrl,
         api: 'openai-responses',
         models: [
-            { id: 'gpt-5.3-codex', name: 'GPT-5.3 Codex', contextWindow: 200000 },
+            { id: 'gpt-5.3-codex', name: 'GPT-5.3 Codex', contextWindow: 400000 },
             { id: 'gpt-5.2', name: 'GPT-5.2', contextWindow: 200000 },
             { id: 'gpt-5', name: 'GPT-5', contextWindow: 200000 },
             { id: 'gpt-4.5-preview', name: 'GPT-4.5 Preview', contextWindow: 128000 },
