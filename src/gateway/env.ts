@@ -57,6 +57,8 @@ export function buildEnvVars(env: MoltbotEnv): Record<string, string> {
   if (env.WORKER_URL) envVars.WORKER_URL = env.WORKER_URL;
   if (env.BRAVE_API_KEY) envVars.BRAVE_API_KEY = env.BRAVE_API_KEY;
   if (env.GH_TOKEN) envVars.GH_TOKEN = env.GH_TOKEN;
+  if (env.HL_WALLET) envVars.HL_WALLET = env.HL_WALLET;
+  if (env.HL_PRIVATE_KEY) envVars.HL_PRIVATE_KEY = env.HL_PRIVATE_KEY;
 
   return envVars;
 }
