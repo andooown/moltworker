@@ -20,6 +20,22 @@ RUN ARCH="$(dpkg --print-architecture)" \
     && node --version \
     && npm --version
 
+# Install ripgrep
+RUN apt-get update && apt-get install -y ripgrep
+
+# Install uv (Python package manager / runner)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && ln -s /root/.local/bin/uv /usr/local/bin/uv \
+    && ln -s /root/.local/bin/uvx /usr/local/bin/uvx \
+    && uv --version
+
+# Install Rust via rustup
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    && ln -s /root/.cargo/bin/rustc /usr/local/bin/rustc \
+    && ln -s /root/.cargo/bin/cargo /usr/local/bin/cargo \
+    && ln -s /root/.cargo/bin/rustup /usr/local/bin/rustup \
+    && rustc --version && cargo --version
+
 # Install pnpm globally
 RUN npm install -g pnpm
 
