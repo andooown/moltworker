@@ -77,7 +77,10 @@ function validateRequiredEnv(env: MoltbotEnv): string[] {
     }
   }
 
-  // Check for AI provider configuration (at least one must be set)
+  return missing;
+}
+
+function validateAIProviderEnv(env: MoltbotEnv): string[] {
   const hasCloudflareGateway = !!(
     env.CLOUDFLARE_AI_GATEWAY_API_KEY &&
     env.CF_AI_GATEWAY_ACCOUNT_ID &&
@@ -88,12 +91,12 @@ function validateRequiredEnv(env: MoltbotEnv): string[] {
   const hasOpenAIKey = !!env.OPENAI_API_KEY;
 
   if (!hasCloudflareGateway && !hasLegacyGateway && !hasAnthropicKey && !hasOpenAIKey) {
-    missing.push(
+    return [
       'ANTHROPIC_API_KEY, OPENAI_API_KEY, or CLOUDFLARE_AI_GATEWAY_API_KEY + CF_AI_GATEWAY_ACCOUNT_ID + CF_AI_GATEWAY_GATEWAY_ID',
-    );
+    ];
   }
 
-  return missing;
+  return [];
 }
 
 /**
@@ -160,7 +163,7 @@ app.route('/cdp', cdp);
 // PROTECTED ROUTES: Cloudflare Access authentication required
 // =============================================================================
 
-// Middleware: Validate required environment variables (skip in dev mode, debug routes, and admin routes)
+// Middleware: Validate required environment variables (skip in dev mode and debug routes)
 app.use('*', async (c, next) => {
   const url = new URL(c.req.url);
 
@@ -169,18 +172,20 @@ app.use('*', async (c, next) => {
     return next();
   }
 
-  // Skip validation for admin routes - admin UI and admin API must be accessible
-  // even without AI provider keys (e.g. for device management/setup)
-  if (url.pathname.startsWith('/_admin') || url.pathname.startsWith('/api/admin')) {
-    return next();
-  }
-
   // Skip validation in dev mode
   if (c.env.DEV_MODE === 'true') {
     return next();
   }
 
+  // Always validate base required env vars
   const missingVars = validateRequiredEnv(c.env);
+
+  // AI provider keys are only required for non-admin routes
+  const isAdminRoute = url.pathname.startsWith('/_admin') || url.pathname.startsWith('/api/admin');
+  if (!isAdminRoute) {
+    missingVars.push(...validateAIProviderEnv(c.env));
+  }
+
   if (missingVars.length > 0) {
     console.error('[CONFIG] Missing required environment variables:', missingVars.join(', '));
 
