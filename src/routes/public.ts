@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
 import type { AppEnv } from '../types';
 import { MOLTBOT_PORT } from '../config';
-import { findExistingMoltbotProcess, getStartupState } from '../gateway';
+import { findExistingMoltbotProcess } from '../gateway';
 
 /**
  * Public routes - NO Cloudflare Access authentication required
- * 
+ *
  * These routes are mounted BEFORE the auth middleware is applied.
  * Includes: health checks, static assets, and public API endpoints.
  */
@@ -33,23 +33,10 @@ publicRoutes.get('/logo-small.png', (c) => {
 // GET /api/status - Public health check for gateway status (no auth required)
 publicRoutes.get('/api/status', async (c) => {
   const sandbox = c.get('sandbox');
-  const startupState = getStartupState();
 
   try {
     const process = await findExistingMoltbotProcess(sandbox);
     if (!process) {
-      // No process found - check if startup failed
-      if (startupState.lastError) {
-        return c.json({
-          ok: false,
-          status: 'startup_failed',
-          error: startupState.lastError,
-          failureCount: startupState.failureCount,
-        });
-      }
-      if (startupState.inProgress) {
-        return c.json({ ok: false, status: 'starting' });
-      }
       return c.json({ ok: false, status: 'not_running' });
     }
 
@@ -62,7 +49,11 @@ publicRoutes.get('/api/status', async (c) => {
       return c.json({ ok: false, status: 'not_responding', processId: process.id });
     }
   } catch (err) {
-    return c.json({ ok: false, status: 'error', error: err instanceof Error ? err.message : 'Unknown error' });
+    return c.json({
+      ok: false,
+      status: 'error',
+      error: err instanceof Error ? err.message : 'Unknown error',
+    });
   }
 });
 
