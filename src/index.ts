@@ -169,9 +169,9 @@ app.use('*', async (c, next) => {
     return next();
   }
 
-  // Skip validation for admin routes - admin UI must be accessible
+  // Skip validation for admin routes - admin UI and admin API must be accessible
   // even without AI provider keys (e.g. for device management/setup)
-  if (url.pathname.startsWith('/_admin')) {
+  if (url.pathname.startsWith('/_admin') || url.pathname.startsWith('/api/admin')) {
     return next();
   }
 
