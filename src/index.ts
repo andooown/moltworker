@@ -160,12 +160,18 @@ app.route('/cdp', cdp);
 // PROTECTED ROUTES: Cloudflare Access authentication required
 // =============================================================================
 
-// Middleware: Validate required environment variables (skip in dev mode and for debug routes)
+// Middleware: Validate required environment variables (skip in dev mode, debug routes, and admin routes)
 app.use('*', async (c, next) => {
   const url = new URL(c.req.url);
 
   // Skip validation for debug routes (they have their own enable check)
   if (url.pathname.startsWith('/debug')) {
+    return next();
+  }
+
+  // Skip validation for admin routes - admin UI must be accessible
+  // even without AI provider keys (e.g. for device management/setup)
+  if (url.pathname.startsWith('/_admin')) {
     return next();
   }
 
