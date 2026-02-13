@@ -94,6 +94,16 @@ if r2_configured; then
         rclone copy "r2:${R2_BUCKET}/skills/" "$SKILLS_DIR/" $RCLONE_FLAGS -v 2>&1 || echo "WARNING: skills restore failed with exit code $?"
         echo "Skills restored"
     fi
+    # Restore auth profiles (for Codex CLI subscription auth)
+    # Upload auth-profiles.json to R2: wrangler r2 object put moltbot-data/auth/auth-profiles.json --file auth-profiles.json
+    AUTH_PROFILES_DIR="/root/.openclaw/agents/main/agent"
+    AUTH_PROFILES_FILE="$AUTH_PROFILES_DIR/auth-profiles.json"
+    if rclone ls "r2:${R2_BUCKET}/auth/auth-profiles.json" $RCLONE_FLAGS 2>/dev/null | grep -q auth-profiles.json; then
+        echo "Restoring auth profiles from R2..."
+        mkdir -p "$AUTH_PROFILES_DIR"
+        rclone copy "r2:${R2_BUCKET}/auth/auth-profiles.json" "$AUTH_PROFILES_DIR/" $RCLONE_FLAGS -v 2>&1 || echo "WARNING: auth-profiles restore failed"
+        echo "Restored auth-profiles.json for Codex CLI authentication"
+    fi
 else
     echo "R2 not configured, starting fresh"
 fi
@@ -151,8 +161,28 @@ try {
     console.log('Starting with empty config');
 }
 
+config.agents = config.agents || {};
+config.agents.defaults = config.agents.defaults || {};
+config.agents.defaults.model = config.agents.defaults.model || {};
 config.gateway = config.gateway || {};
 config.channels = config.channels || {};
+
+// Clean up any broken anthropic provider config from previous runs
+// (older versions didn't include required 'name' field)
+if (config.models?.providers?.anthropic?.models) {
+    const hasInvalidModels = config.models.providers.anthropic.models.some(m => !m.name);
+    if (hasInvalidModels) {
+        console.log('Removing broken anthropic provider config (missing model names)');
+        delete config.models.providers.anthropic;
+    }
+}
+
+// Clean up openai-codex provider config - it's a built-in provider that doesn't need
+// explicit configuration. Having it in config causes "baseUrl required" validation error.
+if (config.models?.providers?.['openai-codex']) {
+    console.log('Removing openai-codex provider config (built-in provider, no config needed)');
+    delete config.models.providers['openai-codex'];
+}
 
 // Gateway configuration
 config.gateway.port = 18789;
@@ -271,8 +301,84 @@ if (process.env.BRAVE_API_KEY) {
     };
 }
 
+// Base URL override (e.g., for Cloudflare AI Gateway)
+// Usage: Set AI_GATEWAY_BASE_URL or ANTHROPIC_BASE_URL to your endpoint like:
+//   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/anthropic
+//   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_id}/openai
+const baseUrl = (process.env.AI_GATEWAY_BASE_URL || process.env.ANTHROPIC_BASE_URL || '').replace(/\/+$/, '');
+const isOpenAI = baseUrl.endsWith('/openai');
+
+if (isOpenAI) {
+    console.log('Configuring OpenAI provider with base URL:', baseUrl);
+    config.models = config.models || {};
+    config.models.providers = config.models.providers || {};
+    config.models.providers.openai = {
+        baseUrl: baseUrl,
+        api: 'openai-responses',
+        models: [
+            { id: 'gpt-5.2', name: 'GPT-5.2', contextWindow: 200000 },
+            { id: 'gpt-5', name: 'GPT-5', contextWindow: 200000 },
+            { id: 'gpt-4.5-preview', name: 'GPT-4.5 Preview', contextWindow: 128000 },
+        ]
+    };
+    config.agents.defaults.models = config.agents.defaults.models || {};
+    config.agents.defaults.models['openai/gpt-5.2'] = { alias: 'GPT-5.2' };
+    config.agents.defaults.models['openai/gpt-5'] = { alias: 'GPT-5' };
+    config.agents.defaults.models['openai/gpt-4.5-preview'] = { alias: 'GPT-4.5' };
+    config.agents.defaults.model.primary = 'openai/gpt-5.2';
+} else if (baseUrl) {
+    console.log('Configuring Anthropic provider with base URL:', baseUrl);
+    config.models = config.models || {};
+    config.models.providers = config.models.providers || {};
+    const providerConfig = {
+        baseUrl: baseUrl,
+        api: 'anthropic-messages',
+        models: [
+            { id: 'claude-opus-4-5-20251101', name: 'Claude Opus 4.5', contextWindow: 200000 },
+            { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', contextWindow: 200000 },
+            { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', contextWindow: 200000 },
+        ]
+    };
+    if (process.env.ANTHROPIC_API_KEY) {
+        providerConfig.apiKey = process.env.ANTHROPIC_API_KEY;
+    }
+    config.models.providers.anthropic = providerConfig;
+    config.agents.defaults.models = config.agents.defaults.models || {};
+    config.agents.defaults.models['anthropic/claude-opus-4-5-20251101'] = { alias: 'Opus 4.5' };
+    config.agents.defaults.models['anthropic/claude-sonnet-4-5-20250929'] = { alias: 'Sonnet 4.5' };
+    config.agents.defaults.models['anthropic/claude-haiku-4-5-20251001'] = { alias: 'Haiku 4.5' };
+    config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5-20251101';
+} else if (!process.env.CF_AI_GATEWAY_MODEL) {
+    // No base URL override and no AI Gateway model override
+    // Check if auth-profiles.json has openai-codex profile for subscription-based auth
+    const authProfilesPath = '/root/.openclaw/agents/main/agent/auth-profiles.json';
+    let hasCodexAuth = false;
+    try {
+        const authProfiles = JSON.parse(fs.readFileSync(authProfilesPath, 'utf8'));
+        hasCodexAuth = Object.keys(authProfiles.profiles || {}).some(key => key.startsWith('openai-codex:'));
+        if (hasCodexAuth) {
+            console.log('Found openai-codex auth profile, configuring Codex models');
+        }
+    } catch (e) {
+        // No auth-profiles.json or invalid format - that's fine
+    }
+
+    if (hasCodexAuth) {
+        // Use built-in openai-codex provider (OAuth from auth-profiles.json)
+        // Available Codex models: gpt-5.2-codex, gpt-5.2, gpt-5.1-codex-max, gpt-5.1-codex-mini
+        config.agents.defaults.models = config.agents.defaults.models || {};
+        config.agents.defaults.models['openai-codex/gpt-5.2-codex'] = { alias: 'GPT-5.2 Codex' };
+        config.agents.defaults.models['openai-codex/gpt-5.2'] = { alias: 'GPT-5.2' };
+        config.agents.defaults.model.primary = 'openai-codex/gpt-5.2-codex';
+    } else {
+        // Default to Anthropic without custom base URL (uses built-in catalog)
+        config.agents.defaults.model.primary = 'anthropic/claude-opus-4-5';
+    }
+}
+
 fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 console.log('Configuration patched successfully');
+console.log('Config:', JSON.stringify(config, null, 2));
 EOFPATCH
 
 # ============================================================
