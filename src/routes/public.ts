@@ -5,7 +5,7 @@ import { findExistingMoltbotProcess, getStartupState } from '../gateway';
 
 /**
  * Public routes - NO Cloudflare Access authentication required
- * 
+ *
  * These routes are mounted BEFORE the auth middleware is applied.
  * Includes: health checks, static assets, and public API endpoints.
  */
@@ -62,7 +62,11 @@ publicRoutes.get('/api/status', async (c) => {
       return c.json({ ok: false, status: 'not_responding', processId: process.id });
     }
   } catch (err) {
-    return c.json({ ok: false, status: 'error', error: err instanceof Error ? err.message : 'Unknown error' });
+    return c.json({
+      ok: false,
+      status: 'error',
+      error: err instanceof Error ? err.message : 'Unknown error',
+    });
   }
 });
 
