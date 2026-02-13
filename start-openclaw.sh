@@ -260,6 +260,17 @@ if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_APP_TOKEN) {
     };
 }
 
+// Brave Search configuration
+if (process.env.BRAVE_API_KEY) {
+    console.log('Configuring Brave Search web tool');
+    config.tools = config.tools || {};
+    config.tools.web = config.tools.web || {};
+    config.tools.web.search = {
+        enabled: true,
+        provider: 'brave',
+    };
+}
+
 fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 console.log('Configuration patched successfully');
 EOFPATCH
