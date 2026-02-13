@@ -80,24 +80,6 @@ function validateRequiredEnv(env: MoltbotEnv): string[] {
   return missing;
 }
 
-function validateAIProviderEnv(env: MoltbotEnv): string[] {
-  const hasCloudflareGateway = !!(
-    env.CLOUDFLARE_AI_GATEWAY_API_KEY &&
-    env.CF_AI_GATEWAY_ACCOUNT_ID &&
-    env.CF_AI_GATEWAY_GATEWAY_ID
-  );
-  const hasLegacyGateway = !!(env.AI_GATEWAY_API_KEY && env.AI_GATEWAY_BASE_URL);
-  const hasAnthropicKey = !!env.ANTHROPIC_API_KEY;
-  const hasOpenAIKey = !!env.OPENAI_API_KEY;
-
-  if (!hasCloudflareGateway && !hasLegacyGateway && !hasAnthropicKey && !hasOpenAIKey) {
-    return [
-      'ANTHROPIC_API_KEY, OPENAI_API_KEY, or CLOUDFLARE_AI_GATEWAY_API_KEY + CF_AI_GATEWAY_ACCOUNT_ID + CF_AI_GATEWAY_GATEWAY_ID',
-    ];
-  }
-
-  return [];
-}
 
 /**
  * Build sandbox options based on environment configuration.
@@ -180,11 +162,7 @@ app.use('*', async (c, next) => {
   // Always validate base required env vars
   const missingVars = validateRequiredEnv(c.env);
 
-  // AI provider keys are only required for non-admin routes
-  const isAdminRoute = url.pathname.startsWith('/_admin') || url.pathname.startsWith('/api/admin');
-  if (!isAdminRoute) {
-    missingVars.push(...validateAIProviderEnv(c.env));
-  }
+  // AI provider keys are validated at runtime when actually needed, not at startup
 
   if (missingVars.length > 0) {
     console.error('[CONFIG] Missing required environment variables:', missingVars.join(', '));
