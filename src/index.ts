@@ -380,11 +380,21 @@ app.all('*', async (c) => {
     });
 
     // Handle close events
+    // RFC 6455 reserves close codes 1005, 1006, and 1015 — they must never be
+    // sent in a Close frame.  When the runtime surfaces one of these (e.g. 1006
+    // for an abnormal network drop), fall back to 1011 (Internal Error).
+    const sanitizeCloseCode = (code: number): number => {
+      if (code === 1005 || code === 1006 || code === 1015) {
+        return 1011;
+      }
+      return code;
+    };
+
     serverWs.addEventListener('close', (event) => {
       if (debugLogs) {
         console.log('[WS] Client closed:', event.code, event.reason);
       }
-      containerWs.close(event.code, event.reason);
+      containerWs.close(sanitizeCloseCode(event.code), event.reason);
     });
 
     containerWs.addEventListener('close', (event) => {
@@ -399,7 +409,7 @@ app.all('*', async (c) => {
       if (debugLogs) {
         console.log('[WS] Transformed close reason:', reason);
       }
-      serverWs.close(event.code, reason);
+      serverWs.close(sanitizeCloseCode(event.code), reason);
     });
 
     // Handle errors
